@@ -1,0 +1,130 @@
+---
+title: "EPG_Data_Analysis"
+author: "Vamsi Nalam"
+date: '2022-09-29'
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(plotrix)
+#The plotrix package allows for calculating Standard error
+library(kableExtra)
+#kableExtra to create tables
+library(dplyr)
+
+epgdata = read_csv('24hrLD_8hr_0_12zt_format_subset.csv')
+
+```
+
+```{r}
+# Summary Statistics!
+
+sumstat_mean = epgdata %>%
+  group_by(Treat) %>%
+  summarise_if(is.numeric, mean, na.rm = TRUE, round(1))
+
+sumstat_sd = epgdata %>% 
+ group_by(Treat) %>% 
+ summarise_if(is.numeric, sd, na.rm = TRUE)
+
+#sumstat_med = epgdata %>% 
+#  group_by(Treat) %>% 
+#  summarise_if(is.numeric, median, na.rm = TRUE, round(1))
+
+#sumstat_IQR = epgdata %>%
+#  group_by(Treat) %>%
+#  summarise_if(is.numeric, IQR, na.rm = TRUE, round(1))
+
+sumstat_std.error = epgdata %>%
+  group_by(Treat) %>%
+  summarise_if(is.numeric, std.error, na.rm = TRUE)
+
+sumstat = epgdata %>%
+  group_by(Treat) %>% 
+  summarise_if(is.numeric, funs(mean,sd,std.error), na.rm = TRUE)
+
+```
+
+```{r}
+#Write a table of results
+
+#write_csv()
+
+#Combine mean, standard error etc into a table
+
+mean = t(sumstat_mean)
+sem = t(sumstat_std.error)
+
+mean_sem = merge(mean, sem, by = 'row.names', all = TRUE)
+colnames(mean_sem) = c("Parameters", "Zt0_mean", "ZT12_mean", "Zt0_SEM", "Zt12_SEM")
+relocate(mean_sem, ZT12_mean, .after=Zt0_SEM)
+write_csv(mean_sem, "24hLD_0_12zt_results.csv")
+
+```
+
+```{r}
+Wilcox_epgdata_bygroup <- lapply(2:32, function(x) pairwise.wilcox.test(epgdata[[x]], epgdata$Treat, paired = F, p.adjust.method = NULL))
+names(Wilcox_epgdata_bygroup) <- names(epgdata)[2:32]
+Wilcox_epgdata_bygroup
+
+
+sapply(Wilcox_epgdata_bygroup, function(x) {
+    p <- x$p.value
+    n <- outer(rownames(p), colnames(p), paste, sep='v')
+    p <- as.vector(p)
+    names(p) <- n
+    p
+})
+```
+
+```{r}
+# Data frames by individual group comparison. 
+
+zt0zt12 = read_csv("24LD_8hour_0zt_12zt.csv")
+
+zt8zt20 = read_csv("24LD_8hour_8zt_20zt.csv")
+
+zt0zt8zt16 = read_csv("24LD_8hr_0zt_8zt_16zt.csv")
+
+zt4zt16 = read_csv("24LD_8hr_0zt_8zt_16zt.csv")
+```
+
+```{r}
+# 0zt vs 12zt
+Wilcox_epgdata_0zt_12zt <- lapply(3:47, function(x) pairwise.wilcox.test(zt0zt12[[x]], zt0zt12$Treat, paired = F, p.adjust.method = NULL))
+names(Wilcox_epgdata_0zt_12zt) <- names(zt0zt12)[3:47]
+Wilcox_epgdata_0zt_12zt
+```
+
+```{r}
+# 0zt vs 8zt vs 16zt 
+Wilcox_epgdata_0zt_8zt_16zt <- lapply(3:47, function(x) pairwise.wilcox.test(zt0zt8zt16[[x]], zt0zt8zt16$Treat, paired = F, p.adjust.method = NULL))
+names(Wilcox_epgdata_0zt_8zt_16zt) <- names(zt0zt8zt16)[3:47]
+Wilcox_epgdata_0zt_8zt_16zt
+```
+
+```{r}
+# 4zt vs 16zt 
+Wilcox_epgdata_4zt_16zt <- lapply(3:47, function(x) pairwise.wilcox.test(zt4zt16[[x]], zt4zt16$Treat, paired = F, p.adjust.method = NULL))
+names(Wilcox_epgdata_4zt_16zt) <- names(zt4zt16)[3:47]
+Wilcox_epgdata_4zt_16zt
+```
+
+
+
+```{r}
+# 8zt vs 20zt
+Wilcox_epgdata_8zt_20zt <- lapply(3:47, function(x) pairwise.wilcox.test(zt8zt20[[x]], zt8zt20$Treat, paired = F, p.adjust.method = NULL))
+names(Wilcox_epgdata_8zt_20zt) <- names(zt8zt20)[3:47]
+Wilcox_epgdata_8zt_20zt
+```
+
+
+
+
+
