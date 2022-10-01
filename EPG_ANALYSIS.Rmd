@@ -1,12 +1,62 @@
 ---
 title: "EPG_Data_Analysis"
-author: "Vamsi Nalam"
+author: "Beery Yakov, Daniel Kunk, Vamsi Nalam"
 date: '2022-09-29'
 output: word_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Code from Beery Yakov to calculate parameter information from .ANA files
+options(stingsAsFactors = FALSE, digits = 2, scipen = 3)
+
+waveform_labels = c("np" = 1,
+                    "C" = 2,
+                    "E1e" = 3,
+                    "E1" = 4,
+                    "E2" = 5,
+                    "F" = 6,
+                    "G" = 7,
+                    "pd-S" = 8,
+                    "pd-S-II-2" = 9,
+                    "pd-S-II-3" = 10,
+                    "pd-L" = 11,
+                    "pd-L-II-2" = 13,
+                    "pd-L-II-3" = 14,
+                    "end" = 12)
+
+if(!interactive()){
+  #Non-interactive
+  library(R.utils)
+  args = R.utils::commandArgs(trailingOnly = TRUE,asValues = TRUE)
+  
+  #Import .ANA file witj -- input /path/EPG.ANA
+  EPG_analysis = read.delim(file = args[["input"]], header = FALSE, fileEncoding = "UTF-16LE", col.names = c("Waveform", "Time", "mV"))
+  
+  #Manually specify labels (e.g. --C 5 --np 7)
+  for(wave_change in names(args)[names(args) %in% names(waveform_labels)]){
+    waveform_labels[wave_change] = args[wave_change]
+  }
+}else{
+  #Interactive
+    EPG_analysis = read.delim(file = file.choose(), header = FALSE, fileEncoding = "UTF-16LE", col.names = c("Waveform", "Time", "mV"))
+}
+
+#Parameter function
+EPG_calc = function(EPG_analysis){
+
+EPG_parameters = as.data.frame(matrix(nrow = 0, ncol = 2, dimnames = list(NULL,c("Value", "Descrption"))))
+
+#Some precomputed values for convenience
+  
+}
+}
+  }
+}
+
 ```
 
 ```{r}
