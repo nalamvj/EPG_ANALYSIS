@@ -14,6 +14,8 @@ compute_summary_stats <- function(parameter_df,
   }
   if(!is.null(treatments)) {
     parameter_df <- subset(parameter_df, parameter_df$treatment %in% treatments)
+  } else { # if treatment argument not passed in, use all treatments data
+    treatments <- unique(parameter_df$treatment)
   }
 
   parameter_df <- parameter_df %>%
@@ -70,24 +72,33 @@ compute_summary_stats <- function(parameter_df,
     select('experiment','acronym','unit','treatment','mean.se') %>%
     pivot_wider(names_from = 'treatment', values_from = 'mean.se', names_prefix = 'mean.se^^')
 
+
   # If at least 2 treatments are chosen, calculate pairwise wilcox test and p-values
-  if(is.null(treatments) || length(treatments) > 1) {
+  if(length(treatments) > 1) {
 
     dunnList <- lapply(paramCols, function(pcol) {
       tryCatch( {
-        # Do Kruskal-Wallis overall test, and then pairwise-comparisons if p < alpha
-        pOverall <- kruskal.test(parameter_df[[pcol]], parameter_df$treatment, na.action = 'na.omit')$p.value
-        out <- data.frame(trt1 = 'overall', trt2 = 'overall', pvalue=pOverall)
-        # If overall test is significant and there are > 2 treatments, do pairwise Dunn tests
-        if(pOverall < alpha & length(treatments) > 2) {
-          dunnResults <- dunn.test::dunn.test(parameter_df[[pcol]], parameter_df$treatment, method = p_adjust_method)
-          dunnResults <- data.frame(comparison = dunnResults$comparisons, pvalue = dunnResults$P.adjusted)
-          x <- strsplit(dunnResults$comparison, ' - ', fixed = TRUE)
-          dunnResults$trt1 <- sapply(x, function(y) y[1])
-          dunnResults$trt2 <- sapply(x, function(y) y[2])
-          dunnResults$comparison <- NULL
-          out <- rbind(out, dunnResults)
+        if(length(treatments) > 2) { # 3 or more treatments
+          # Do Kruskal-Wallis overall test, and then pairwise-comparisons if p < alpha
+          pOverall <- kruskal.test(parameter_df[[pcol]], parameter_df$treatment, na.action = 'na.omit')$p.value
+          out <- data.frame(trt1 = 'overall', trt2 = 'overall', pvalue=pOverall)
+          # If overall test is significant and there are > 2 treatments, do pairwise Dunn tests
+          if(pOverall < alpha) {
+            dunnResults <- dunn.test::dunn.test(parameter_df[[pcol]], parameter_df$treatment, method = p_adjust_method)
+            dunnResults <- data.frame(comparison = dunnResults$comparisons, pvalue = dunnResults$P.adjusted)
+            x <- strsplit(dunnResults$comparison, ' - ', fixed = TRUE)
+            dunnResults$trt1 <- sapply(x, function(y) y[1])
+            dunnResults$trt2 <- sapply(x, function(y) y[2])
+            dunnResults$comparison <- NULL
+            out <- rbind(out, dunnResults)
+          }
+        } else { # only 2 treatments
+          x <- parameter_df[[pcol]][parameter_df$treatment == treatments[1]]
+          y <- parameter_df[[pcol]][parameter_df$treatment == treatments[2]]
+          pval <- wilcox.test(x, y, na.action = 'na.omit')$p.value
+          out <- data.frame(trt1 = treatments[1], trt2 = treatments[2], pvalue=pval)
         }
+
         out$acronym <- pcol
         return(out)
       },

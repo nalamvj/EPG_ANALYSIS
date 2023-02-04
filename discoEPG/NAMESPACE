@@ -1,2 +1,2 @@
 exportPattern("^[[:alpha:]]+")
-import(tidyr); import(dplyr); import(DiagrammeR); import(dunn.test)
+import(tidyr); import(dplyr); import(DiagrammeR); import(dunn.test); import(ggplot2)
