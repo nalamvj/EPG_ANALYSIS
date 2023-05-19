@@ -1,4 +1,11 @@
-ana_to_kinetogram_df <- function(anaDatList, trtKey, treatments=NULL, alpha=0.05, p_adjust_method = 'bonferroni') {
+# Calculate Kinetogram summary stats for 1 or 2 treatments.
+# If 2 treamtents' data is provided, then calculate overall (Wilcox test) p-values.
+
+ana_to_kinetogram_df <- function(ana_df, alpha=0.05, p_adjust_method = 'bonferroni') {
+
+  treatments <- unique(ana_df$treatment)
+
+  anaDatList <- split(ana_df, ana_df$filename)
 
   compute_transitions <- function(df) {
     # drop last row (assumes we have QAQC'ed already using 'read_ana' function)
@@ -41,16 +48,17 @@ ana_to_kinetogram_df <- function(anaDatList, trtKey, treatments=NULL, alpha=0.05
   # --- Compute Phase Durations and Transition Frequencies
   transitions <- lapply(anaDatList, function(df) compute_transitions(df))
   transitions <- do.call(rbind, transitions)
-  transitions <- pivot_wider(transitions, names_from = 'transition', values_from = 'n')
+  transitions <- tidyr::pivot_wider(transitions, names_from = 'transition', values_from = 'n')
   transitions$totalTransitions <- transitions %>%
     select(-one_of('filename')) %>%
     rowSums(na.rm = TRUE)
   durations <- lapply(anaDatList, function(df) getDurations(df))
   durations <- do.call(rbind, durations)
-  durations <- pivot_wider(durations, names_from = 'acronym', values_from = 'duration_pct')
+  durations <- tidyr::pivot_wider(durations, names_from = 'acronym', values_from = 'duration_pct')
 
   dat <- merge(transitions, durations, by = 'filename')
-  dat <- merge(dat, trtKey, by = 'filename')
+  dat <- merge(dat, unique(ana_df[,c('filename', 'treatment')]), by = 'filename')
+  dat[is.na(dat)] <- 0 # replace NA with zero so we can calculate summary stats & pvalues
 
   # --- Compute Summary Stats
 
@@ -92,28 +100,23 @@ ana_to_kinetogram_df <- function(anaDatList, trtKey, treatments=NULL, alpha=0.05
   sumstat <- merge(sumstat, arrowWidths, by = c('treatment', 'parameter'), all = TRUE)
 
 
-  # --- Run Dunn Tests To Find Significant Differences Between Treatments (Overall and Pairwise)
+  # --- Run Wilcox Tests To Find Significant Differences Between 2 Treatments
 
-  # If at least 2 treatments are chosen, calculate pairwise wilcox test and p-values
-  if(is.null(treatments) || length(treatments) > 1) {
+  # If 2 treatments are chosen, calculate overall Wilcox test p-values
+  if(length(treatments) == 2) {
 
     paramCols <- setdiff(colnames(dat), c('filename', 'treatment'))
 
-    dunnList <- lapply(paramCols, function(pcol) {
+    wilcoxList <- lapply(paramCols, function(pcol) {
       tryCatch( {
-        # Do Kruskal-Wallis overall test, and then pairwise-comparisons if p < alpha
-        pOverall <- kruskal.test(dat[[pcol]], dat$treatment, na.action = 'na.omit')$p.value
-        out <- data.frame(trt1 = 'overall', trt2 = 'overall', pvalue=pOverall)
-        if(pOverall < alpha & length(treatments) > 2) {
-          dunnResults <- dunn.test::dunn.test(dat[[pcol]], dat$treatment, method = p_adjust_method)
-          dunnResults <- data.frame(comparison = dunnResults$comparisons, pvalue = dunnResults$P.adjusted)
-          x <- strsplit(dunnResults$comparison, ' - ', fixed = TRUE)
-          dunnResults$trt1 <- sapply(x, function(y) y[1])
-          dunnResults$trt2 <- sapply(x, function(y) y[2])
-          dunnResults$comparison <- NULL
-          out <- rbind(out, dunnResults)
-        }
-        out$parameter <- pcol
+        x <- dat[[pcol]][dat$treatment == treatments[1]]
+        y <- dat[[pcol]][dat$treatment == treatments[2]]
+        pval <- wilcox.test(x, y, na.action = 'na.omit')$p.value
+        out <- data.frame(trt1 = treatments[1], trt2 = treatments[2], pvalue=pval, parameter = pcol)
+
+        # pOverall <- kruskal.test(dat[[pcol]], dat$treatment, na.action = 'na.omit')$p.value
+        # out <- data.frame(trt1 = 'overall', trt2 = 'overall', pvalue=pOverall)
+        # out$parameter <- pcol
         return(out)
       },
       # warning = function(w) {
@@ -124,10 +127,10 @@ ana_to_kinetogram_df <- function(anaDatList, trtKey, treatments=NULL, alpha=0.05
       })
     })
 
-    dunnDat <- do.call(rbind, dunnList)
+    wilcoxDat <- do.call(rbind, wilcoxList)
 
   }
 
-  return(list(summaryStats = sumstat, pValues = dunnDat))
+  return(list(summaryStats = sumstat, pValues = wilcoxDat))
 
 }
