@@ -6,7 +6,7 @@
 
 
 # clear the environment of all objects (beware!)
-# rm(list = ls())
+rm(list = ls())
 
 # install discoEPG package
 if(!require(remotes)) install.packages('remotes')
@@ -58,7 +58,7 @@ ana_out$errors
 # ----- Function 2: combine_ana -- Read multiple ANA files and combine.
 # ------------------------------------------------------------------------------
 
-# folder (directory) for .ANA files 
+# folder (directory) for .ANA files
 ana_dir <- "/Users/c/Documents/EPG Project/Info for Clay/Grids/"
 
 # character vector of all .ANA files in above folder
@@ -149,7 +149,6 @@ ts_dat <- ts_out$data
 # show plot
 ts_out$plot
 
-
 # ------------------------------------------------------------------------------
 # ----- FUNCTION 6: ana_to_kinetogram_df
 # ------------------------------------------------------------------------------
@@ -186,6 +185,6 @@ make_kinetogram(kinetogramSummaryStats = subset(kgramSumStats, treatment == 'nig
 # Returns a list of kinetograms, named by treatment
 kgrams <- compare_kinetograms(kineDat, alpha = 0.05)
 
-# show kinetograms 
+# show kinetograms
 kgrams$day
 kgrams$night

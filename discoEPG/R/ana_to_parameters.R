@@ -1,12 +1,17 @@
 
 ana_to_parameters <- function(ana_df, waveform_labels) {
-  byCols <- if('treatment' %in% colnames(ana_df)) c('filename', 'treatment') else 'filename'
-  paramDat <- plyr::ddply(ana_df, byCols, function(df) {
-    df <- compute_parameters(EPG_analysis=df, waveform_labels=waveform_labels)
-    df$acronym <- rownames(df)
-    return(df)
+
+  param_dat <- split(ana_df, ana_df$filename)
+  param_dat <- lapply(param_dat, function(x) {
+    pdat <- compute_parameters(x, waveform_labels)
+    pdat$filename <- unique(x$filename)
+    pdat$acronym <- rownames(pdat)
+    rownames(pdat) <- NULL
+    return(pdat)
   })
-  # TODO: Not sure why but Beery's latest function doesn't convert value to numeric
-  paramDat$Value <- as.numeric(paramDat$Value)
-  return(paramDat)
+  param_dat <- do.call(rbind, param_dat)
+  param_dat$Value <- as.numeric(param_dat$Value)
+  colnames(param_dat) <- tolower(colnames(param_dat))
+  rownames(param_dat) <- NULL
+  return(param_dat)
 }
