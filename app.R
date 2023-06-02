@@ -1,6 +1,7 @@
 rm(list=ls())
 
-lapply(c('discoEPG', 'shiny', 'shinyWidgets', 'rhandsontable', 'gt', 'svglite', 'DiagrammeRsvg'), library, character.only = TRUE)
+lapply(c('discoEPG', 'shiny', 'shinyWidgets', 'dplyr', 'rhandsontable', 'gt',
+         'svglite', 'DiagrammeR', 'DiagrammeRsvg', 'ggplot2'), library, character.only = TRUE)
 
 # Code for running on Clay's laptop
 # appPath <- "/Users/c/Documents/EPG Project/EPGShinyApp/Deployed/"
@@ -9,6 +10,7 @@ lapply(c('discoEPG', 'shiny', 'shinyWidgets', 'rhandsontable', 'gt', 'svglite', 
 # Code for running on Shiny server
 appPath <- ""
 parameterMetadata <- read.csv("ParameterMetadata.csv")
+
 
 # Rest of the code is "platform-agnostic"
 colnames(parameterMetadata) <- tolower(colnames(parameterMetadata))
@@ -58,7 +60,6 @@ shinyApp(
                            p(style="text-align: justify; font-size = 50px",
                              "The discoEPG package gives users the ability to easily calculate feeding behavior parameters directly from ‘.ANA’ files, perform statistical analysis on calculated parameters, and generate summary tables and graphs all in one package. Users can upload their ANA files, assign treatments, and calculate feeding behavior parameters in the 'Upload Data' tab. In the 'Validation Errors' tab, users can check their waveform calls and ensure the typical sequence of feeding behaviors are being followed in their annotations. The 'Summary Statistics' tab allows users to generate summary tables and perform statistical analysis between user selected treatments. The tables provide the mean and standard error of a particular, the group p-value, and individual comparison p-values for the selected parameter. Recordings that display over 70% of the recording duration in the F, G or NP waveforms are excluded from statistical analysis. The 'Boxplots' tab provides users boxplot figures of a selected parameter and treatment. The 'Timeseries Plot' tab provides users with timeseries plots, which display the feeding behavior that was displayed by the majority of aphids at a specific time during the recording. The 'Kinetogram' tab provides users with a behavioral kinetogram that shows the number of transitional events for each waveform."
                            ),
-                           # br(),
                            hr(),
                            h4(strong("Getting Started: Uploading Data and Assigning Treatments")),
                            p(style="text-align: justify; font-size = 50px",
@@ -213,6 +214,12 @@ shinyApp(
                              }),
                              conditionalPanel("output.trtAssignParamCalc", {
                                actionButton(inputId = 'plotTimeseries', label = "Plot Timeseries")
+                             }),
+                             conditionalPanel("output.timeseriesCalculated", {
+                               downloadButton(outputId = "downloadTimeseriesData", label = "Download Timeseries Data")
+                             }),
+                             conditionalPanel("output.timeseriesCalculated", {
+                               downloadButton(outputId = "downloadTimeseriesPlot", label = "Download Timeseries Plot")
                              })
                            ),
                            mainPanel(
@@ -237,9 +244,22 @@ shinyApp(
                              }),
                              conditionalPanel("output.trtAssignParamCalc", {
                                actionButton(inputId = 'showKinetogram', label = "Show Kinetogram")
-                             })
+                             }),
+                             conditionalPanel("output.kinetogramCalculated", {
+                               downloadButton(outputId = "downloadKinetogramData", label = "Download Kinetogram Data")
+                             }),
+                             conditionalPanel("output.kinetogramCalculated", {
+                               downloadButton(outputId = "downloadKinetogramPlot1", label = "Download Kinetogram Plot, 1st Treatment")
+                             }),
+                             conditionalPanel("output.kinetogramCalculated", {
+                               downloadButton(outputId = "downloadKinetogramPlot2", label = "Download Kinetogram Plot, 2nd Treatment")
+                             }),
+
                            ),
                            mainPanel(
+                             p(style="text-align: justify; font-size = 50px",
+                               "Note: Statistically significant differences between treatments are shown by red arrows or node outlines."
+                             ),
                              conditionalPanel("output.trtAssignParamCalc", {
                                grVizOutput("kinetogramPlot1")
                              }),
@@ -261,11 +281,14 @@ shinyApp(
 
     output$filesUploaded <- reactive(if(length(input$files) > 0) TRUE else FALSE)
     output$trtAssignParamCalc <- reactive(if(input$assignTrtCalcParam > 0) TRUE else FALSE)
-    # output$parametersCalculated <- reactive(if(input$calculateParameters > 0) TRUE else FALSE)
     output$sumstatsCalculated <- reactive(if(input$calculateSummaryStats > 0) TRUE else FALSE)
+    output$timeseriesCalculated <- reactive(if(input$plotTimeseries > 0) TRUE else FALSE)
+    output$kinetogramCalculated <- reactive(if(input$showKinetogram > 0) TRUE else FALSE)
     outputOptions(output, "filesUploaded", suspendWhenHidden = FALSE)
     outputOptions(output, "trtAssignParamCalc", suspendWhenHidden = FALSE)
     outputOptions(output, "sumstatsCalculated", suspendWhenHidden = FALSE)
+    outputOptions(output, "timeseriesCalculated", suspendWhenHidden = FALSE)
+    outputOptions(output, "kinetogramCalculated", suspendWhenHidden = FALSE)
 
 
     ### ----- Tab 0: Home Page ----
@@ -331,7 +354,7 @@ shinyApp(
         epgData <- ana_to_parameters(ana_df = dat, waveform_labels = waveform_labels)
 
         # Check if any files have > 70% of total time spent in F, G or np. If so, remove these from analysis and show notification in app.
-        idx <- which(epgData$acronym == "%timeinF+G+np" & epgData$Value > 70)
+        idx <- which(epgData$acronym == "%timeinF+G+np" & epgData$value > 70)
 
         if(length(idx) > 0) {
           filesToRemove <- unique(epgData$filename[idx])
@@ -345,8 +368,7 @@ shinyApp(
 
         # Merge to treatments
         meta <- hot_to_r(input$metadata_hot)
-        epgData <- merge(epgData, meta, by = c('filename', 'treatment')) %>%
-          rename(value = Value, description = Description)
+        epgData <- merge(epgData, meta, by = c('filename'))
         return(epgData)
       } else {
         return(NULL)
@@ -572,7 +594,7 @@ shinyApp(
     }) %>% bindEvent(input$plotTimeseries)
 
     # Timeseries Plot (for Display)
-    output$timeseriesPlot <- renderPlot({
+    tsPlot <- function() {
       modeDat <- timeseriesDat()
       # re-order factor, in same order as "waveform_labels"
       modeDat$activity <- factor(toupper(modeDat$activity),
@@ -585,7 +607,33 @@ shinyApp(
         theme_classic(base_size = 16) +
         coord_flip() +
         facet_wrap(~treatment, ncol=1)
+    }
+
+    output$timeseriesPlot <- renderPlot({
+      tsPlot()
     })
+
+    # Export Timeseries Data
+    output$downloadTimeseriesData <- downloadHandler(
+      filename = function() {
+        paste0("ShinyAppTimeseriesDataExport_", Sys.time(), ".csv")
+      },
+      content = function(file) {
+        write.csv(timeseriesDat(), file, row.names = FALSE)
+      }
+    )
+
+    # Export Timeseries Plot (SVG)
+    output$downloadTimeseriesPlot <- downloadHandler(
+      filename = function() {
+        paste0("ShinyAppTimeseriesPlotExport_", Sys.time(), ".svg")
+      },
+      content = function(file) {
+        svglite(file, width = 8, height = 5)
+        print(tsPlot())
+        dev.off()
+      }
+    )
 
 
     ### ----- Tab 5: Kinetograms   ----
@@ -600,29 +648,78 @@ shinyApp(
 
     }, ignoreInit = TRUE)
 
+    # A list of 2 graph viz objects (one kinetogram "viz" per treatment)
+    # kinetogramList <- reactive({
+    #   deList <- dataAndErrorsList()
+    #   anaDat <- deList$data
+    #   trtKey <- hot_to_r(input$metadata_hot)
+    #   anaDat <- merge(anaDat, trtKey)
+    #   anaDat <- subset(anaDat, treatment %in% input$treatmentPickerKinetogram)
+    #   kineDat <- ana_to_kinetogram_df(ana_df = anaDat)
+    #   kinePlots <- compare_kinetograms(kineDat = kineDat)
+    #   return(list(data = kineDat, plots = kinePlots))
+    # }) %>% bindEvent(input$showKinetogram)
 
-    kinetogramList <- reactive({
+    kinetogramList <- function() {
       deList <- dataAndErrorsList()
       anaDat <- deList$data
       trtKey <- hot_to_r(input$metadata_hot)
       anaDat <- merge(anaDat, trtKey)
       anaDat <- subset(anaDat, treatment %in% input$treatmentPickerKinetogram)
       kineDat <- ana_to_kinetogram_df(ana_df = anaDat)
-      outList <- compare_kinetograms(kineDat = kineDat)
-      return(outList)
-    }) %>% bindEvent(input$showKinetogram)
+      kinePlots <- compare_kinetograms(kineDat = kineDat)
+      return(list(data = kineDat, plots = kinePlots))
+    }
+
+    # kinetogramList <- reactive({
+    #   kineList()
+    # }) %>% bindEvent(input$showKinetogram)
+
 
     output$kinetogramPlot1 <- renderGrViz({
-      kgram1 <- kinetogramList()[[1]]
-      return(kgram1)
+      kinetogramList()$plots[[1]]
     }) %>% bindEvent(input$showKinetogram)
 
     output$kinetogramPlot2 <- renderGrViz({
-      kgram2 <- kinetogramList()[[2]]
-      return(kgram2)
+      kinetogramList()$plots[[2]]
     }) %>% bindEvent(input$showKinetogram)
+
+    # Export Kinetogram Data
+    output$downloadKinetogramData <- downloadHandler(
+      filename = function() {
+        paste0("ShinyAppKinetogramDataExport_", Sys.time(), ".csv")
+      },
+      content = function(file) {
+        write.csv(kinetogramList()$data$summaryStats, file, row.names = FALSE)
+      }
+    )
+
+    # Export Kinetogram Plots (SVG)
+    output$downloadKinetogramPlot1 <- downloadHandler(
+      filename = function() {
+        paste0("ShinyAppKinetogramPlotExport_Treatment_", names(kinetogramList()$plots)[1], "_", Sys.time(), ".svg")
+      },
+      content = function(file) {
+        svg <- DiagrammeRsvg::export_svg(kinetogramList()$plots[[1]])
+        fileConn <- file(file)
+        writeLines(svg, fileConn)
+        close(fileConn)
+      }
+    )
+    output$downloadKinetogramPlot2 <- downloadHandler(
+      filename = function() {
+        paste0("ShinyAppKinetogramPlotExport_Treatment_", names(kinetogramList()$plots)[2], "_", Sys.time(), ".svg")
+      },
+      content = function(file) {
+        svg <- DiagrammeRsvg::export_svg(kinetogramList()$plots[[2]])
+        fileConn <- file(file)
+        writeLines(svg, fileConn)
+        close(fileConn)
+      }
+    )
 
 
   }
 
 )
+
