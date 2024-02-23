@@ -6,11 +6,13 @@
 
 
 # clear the environment of all objects (beware!)
-# rm(list = ls())
+rm(list = ls())
 
 # install discoEPG package
 if(!require(remotes)) install.packages('remotes')
-remotes::install_github("nalamvj/EPG_ANALYSIS/discoEPG")
+remotes::install_github("nalamvj/EPG_ANALYSIS/discoEPG",
+                        auth_token = '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',
+                        force = TRUE)
 
 # load package
 require(discoEPG)
@@ -56,7 +58,7 @@ ana_out$errors
 # ----- Function 2: combine_ana -- Read multiple ANA files and combine.
 # ------------------------------------------------------------------------------
 
-# folder (directory) for .ANA files 
+# folder (directory) for .ANA files
 ana_dir <- "/Users/c/Documents/EPG Project/Info for Clay/Grids/"
 
 # character vector of all .ANA files in above folder
@@ -146,23 +148,43 @@ ts_dat <- ts_out$data
 
 # show plot
 ts_out$plot
+
 # ------------------------------------------------------------------------------
 # ----- FUNCTION 6: ana_to_kinetogram_df
 # ------------------------------------------------------------------------------
 
 
-# --------- Function (In Progress) to Calculate Transitions and % Time Spent in each Activity ===========
+# --------- Function  to Calculate Transitions and % Time Spent in each Activity ===========
 
-datList <- datList[1:2]
-
-trtKey <- data.frame(filename=sapply(datList, function(x) unique(x$filename)))
-trtKey$treatment <- rep_len(letters[1:2], nrow(trtKey))
-
-
-kineDat <- ana_to_kinetogram_df(anaDatList = datList, trtKey = trtKey)
+ana_df <- anaData
+kineDat <- ana_to_kinetogram_df(ana_df = ana_df)
 
 ## ---- Function to convert data for a single treatment to kinetograph
+kgramSumStats <- kineDat$summaryStats
 
-make_kinetogram(kineDat = kineDat, trt = 'a')
-make_kinetogram(kineDat = kineDat, trt = 'b')
+# ------------------------------------------------------------------------------
+# ----- FUNCTION 7: make_kinetogram
+# ------------------------------------------------------------------------------
 
+# --------- Function to Plot a Single Kinetogram (1 treatment) ===========
+
+# Note, this is only plotting 1 kinetogram/treatment, and not showing any statistical differences.
+make_kinetogram(kinetogramSummaryStats = subset(kgramSumStats, treatment == 'day'))
+make_kinetogram(kinetogramSummaryStats = subset(kgramSumStats, treatment == 'night'))
+
+
+# ------------------------------------------------------------------------------
+# ----- FUNCTION 7: compare_kinetograms
+# ------------------------------------------------------------------------------
+
+# --------- Function to Plot Return 2 kinetograms (1 per treatment) and show Statistical Differences ===========
+
+# note, edges/nodes that are statistically different are shown in RED color.
+# the color is applied to the GREATER-valued parameter of the 2 treatments.
+
+# Returns a list of kinetograms, named by treatment
+kgrams <- compare_kinetograms(kineDat, alpha = 0.05)
+
+# show kinetograms
+kgrams$day
+kgrams$night
