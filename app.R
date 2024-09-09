@@ -1,11 +1,24 @@
 rm(list=ls())
 
-lapply(c('discoEPG', 'shiny', 'shinyWidgets', 'dplyr', 'rhandsontable', 'gt',
-         'svglite', 'DiagrammeR', 'DiagrammeRsvg', 'ggplot2'), library, character.only = TRUE)
+require(shiny)
+require(shinyWidgets)
+require(rhandsontable)
+require(gt)
+require(ggplot2)
+require(DiagrammeR)
+require(DiagrammeRsvg)
+require(svglite)
+require(tidyverse)
+require(discoEPG)
+require(bslib)
 
 # Code for running on Clay's laptop
 # appPath <- "/Users/c/Documents/EPG Project/EPGShinyApp/Deployed/"
 # parameterMetadata <- read.csv(paste0(appPath, "ParameterMetadata.csv"))
+
+# Code for running on Daniel's PC
+#appPath <- "/Users/danie/OneDrive - Colostate/NALAM LAB/R package (EPG)/Deployed/Deployed_PC/"
+#parameterMetadata <- read.csv(paste0(appPath, "ParameterMetadata.csv"))
 
 # Code for running on Shiny server
 appPath <- ""
@@ -42,11 +55,26 @@ shinyApp(
 
                 # ---- Tab 0: Home Page - Background & Instructions
                 tabPanel(title = 'Home Page', fluid = TRUE, value = 'homeTab',
-                         # titlePanel("EPG Shiny App: Start Here"),
+                         #titlePanel("EPG Shiny App: Start Here"),
                          mainPanel(
+                           #disco logo
+                           br(),
+                           br(),
                            imageOutput('discoLogo', height = '100px'),
                            br(),
                            hr(),
+                           #title and version
+                           h2(strong("discoEPG Shiny App v1.0")),
+                           # contact info
+                           p(style="text-align: justify; font-size = 50px",
+                             "Developed by",strong("Clayton Bliss, Daniel Kunk, and Vamsi Nalam."),"For more information or to download the discoEPG R-package please visit our ",  strong(a(href = "https://github.com/nalamvj/EPG_ANALYSIS", "github repository")),
+                             "."
+                           ),
+                           p(style = "text-align: justify; font-size = 50px",
+                             strong("We value your feedback!"), "If you encounter any issues, find bugs, or have suggestions for improvement, please don’t hesitate to reach out to", strong("vamsi.nalam@colostate.edu"), "and let us know."
+                             ),
+                           hr(),
+                           # project description essay
                            h4(strong("Project Description")),
                            p(style="text-align: justify; font-size = 50px",
                              "Electrical penetration graph (EPG) is a technique used to study the feeding behavior of aphids on plants. In this technique, the aphid and plant are made part of an electrical circuit, which is completed when aphid mouthparts penetrate plant tissue. When the aphid stylet is inserted intercellularly, the voltage is positive and when inserted intracellularly, the voltage is negative. Waveforms in EPG have been correlated to specific aphid feeding behaviors by stylectomy followed by microscopy of the plant tissue to determine the approximate location of the stylet as well as observing aphid head movement, posture, and muscle dynamics. EPG is well established and has been widely used to study the mechanisms of plant virus transmission by aphids, the effect of resistant and susceptible lines on aphid feeding behaviors, and to better our understanding of the mechanisms that aphids use to continuously drink from the phloem."
@@ -61,7 +89,8 @@ shinyApp(
                              "The discoEPG package gives users the ability to easily calculate feeding behavior parameters directly from ‘.ANA’ files, perform statistical analysis on calculated parameters, and generate summary tables and graphs all in one package. Users can upload their ANA files, assign treatments, and calculate feeding behavior parameters in the 'Upload Data' tab. In the 'Validation Errors' tab, users can check their waveform calls and ensure the typical sequence of feeding behaviors are being followed in their annotations. The 'Summary Statistics' tab allows users to generate summary tables and perform statistical analysis between user selected treatments. The tables provide the mean and standard error of a particular, the group p-value, and individual comparison p-values for the selected parameter. Recordings that display over 70% of the recording duration in the F, G or NP waveforms are excluded from statistical analysis. The 'Boxplots' tab provides users boxplot figures of a selected parameter and treatment. The 'Timeseries Plot' tab provides users with timeseries plots, which display the feeding behavior that was displayed by the majority of aphids at a specific time during the recording. The 'Kinetogram' tab provides users with a behavioral kinetogram that shows the number of transitional events for each waveform."
                            ),
                            hr(),
-                           h4(strong("Getting Started: Uploading Data and Assigning Treatments")),
+                           # getting started page
+                           h3(strong("Getting Started: Uploading Data and Assigning Treatments")),
                            p(style="text-align: justify; font-size = 50px",
                              "The first steps in using this app are outlined below. You will start in the 'Upload Data' tab, by clicking the 'Browse' button:"
                            ),
@@ -79,6 +108,7 @@ shinyApp(
                            br(),
                            p(style="text-align: justify; font-size = 50px",
                              "You're all done with data processing! Now you can move on to other tabs to see data validation errors, summary statistics, and plots."
+                          # fin tab 0, begin functional tabs
                            )
                          )
                 ),
@@ -722,4 +752,3 @@ shinyApp(
   }
 
 )
-
