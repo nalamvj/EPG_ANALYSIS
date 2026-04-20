@@ -1,5 +1,3 @@
-library(tidyverse)
-
 #' Calculate and Plot Empirical Proportions of EPG Waveforms Over Time
 #'
 #' @description 
