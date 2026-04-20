@@ -5,8 +5,7 @@
 #' returning the single most frequent waveform (mode) across all recordings at each second, 
 #' this function calculates the empirical probability (proportion) of all active insects 
 #' engaging in each specific behavior over continuous time. It then generates a continuous 
-#' GAM-smoothed visualization of these behavioral shifts. This is particularly useful for 
-#' summarizing longitudinal or circadian feeding behaviors (e.g., across 24h recordings).
+#' GAM-smoothed visualization of these behavioral shifts.
 #' 
 #' @author Daniel Kunk
 #'
