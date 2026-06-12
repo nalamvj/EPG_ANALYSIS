@@ -1,4 +1,11 @@
 # Disco EPG R-package and Shiny App
+
+<!-- badges: start align="center" -->
+  [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20659422-blue.svg)](https://doi.org/10.5281/zenodo.20659422)
+<!-- badges: end -->
+
+
+
 ## Intro
 This is the home page for the discoEPG R-package and shiny app. To use the Shiny App please go to https://nalamlab.shinyapps.io/discoEPG/.
 
