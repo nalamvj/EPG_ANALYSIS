@@ -27,4 +27,4 @@ library(discoEPG)
 ```
 
 ### Works used
-Parts of this tool were used in the manuscript: https://doi.org/10.7554/eLife.97986.2
+Parts of this tool were used in the manuscript: Jinlong Han, Daniel Kunk, Meihua Cui, Yoshiahu Goldstein, Vered Tzin, Vamsi J Nalam (2024) Diurnal rhythmicity in metabolism and salivary effector expression shapes aphid performance on host plantseLife13:RP97986. https://doi.org/10.7554/eLife.97986.2
