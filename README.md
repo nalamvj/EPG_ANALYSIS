@@ -25,3 +25,6 @@ install_github("nalamvj/EPG_ANALYSIS/discoEPG")
 # next we can load the discoEPG package into our environment.
 library(discoEPG)
 ```
+
+### Works used
+Parts of this tool were used in the manuscript: https://doi.org/10.7554/eLife.97986.2
